@@ -33,7 +33,7 @@ def flatten_text_preserving_wrapped_urls(text: str) -> str:
 			or "https://" in left_token
 			or left_token.startswith("www.")
 		)
-		left_token_looks_incomplete = left_token.endswith(("-", "/", ".", "_", ":", "?", "&", "=", "%","dx","doi","10"))
+		left_token_looks_incomplete = left_token.endswith(("-", "/", ".", "_", ":", "?", "&", "=", "%"))
 		right_looks_like_url_continuation = bool(
 			right_token and re.match(r"^[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$", right_token)
 		)
@@ -47,6 +47,51 @@ def flatten_text_preserving_wrapped_urls(text: str) -> str:
 		i = j
 
 	return "".join(parts)
+
+
+def strip_trailing_url_punctuation(url: str) -> str:
+	return url.rstrip(").,;:!?'\"]")
+
+
+def scan_url_continuation_from_line(line: str) -> str:
+	match = re.match(r"\s*([A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+)", line)
+	if not match:
+		return ""
+	return match.group(1)
+
+
+def review_detected_urls(raw_text: str) -> list[str]:
+	lines = raw_text.splitlines()
+	accepted_urls: list[str] = []
+
+	for line_index, line in enumerate(lines):
+		for match in re.finditer(r"https?://\S+|www\.\S+", line):
+			candidate = strip_trailing_url_punctuation(match.group(0))
+			next_line_index = line_index + 1
+
+			while True:
+				print(f"\nDetected URL: {candidate}")
+				decision = input("Press Enter if correct, any other key then Enter for incomplete: ")
+
+				if decision == "":
+					if candidate:
+						accepted_urls.append(candidate)
+					break
+
+				if next_line_index >= len(lines):
+					print("No more lines to scan for continuation.")
+					break
+
+				continuation = scan_url_continuation_from_line(lines[next_line_index])
+				next_line_index += 1
+
+				if not continuation:
+					print("No URL-like continuation found on next line.")
+					continue
+
+				candidate = strip_trailing_url_punctuation(candidate + continuation)
+
+	return accepted_urls
 
 
 def main() -> None:
@@ -74,12 +119,18 @@ def main() -> None:
 		return
 
 	flat_text = flatten_text_preserving_wrapped_urls(text)
-	links = re.findall(r"https?://\S+|www\.\S+", flat_text)
+	if not re.search(r"https?://\S+|www\.\S+", flat_text):
+		print("cancel")
+		return
+
+	print("Review each detected URL. Use Enter to accept, or type anything to mark incomplete.")
+	links = review_detected_urls(text)
 
 	if not links:
 		print("cancel")
 		return
 
+	print("\nAccepted URLs:")
 	print("\n".join(links))
 
 
