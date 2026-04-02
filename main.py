@@ -1,4 +1,7 @@
+from pypdf import PdfReader
+
 preproc = True
+
 
 if preproc:
     with open("import.txt", 'r+',encoding='utf-8') as f:
