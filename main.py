@@ -68,15 +68,23 @@ def review_detected_urls(raw_text: str) -> list[str]:
 		for match in re.finditer(r"https?://\S+|www\.\S+", line):
 			candidate = strip_trailing_url_punctuation(match.group(0))
 			next_line_index = line_index + 1
+			history: list[str] = []
 
 			while True:
 				print(f"\nDetected URL: {candidate}")
-				decision = input("Press Enter if correct, any other key then Enter for incomplete: ")
+				decision = input("Press Enter if correct, type 'r' to revert last change, any other key then Enter for incomplete: ")
 
 				if decision == "":
 					if candidate:
 						accepted_urls.append(candidate)
 					break
+
+				if decision.lower() == "r":
+					if history:
+						candidate = history.pop()
+					else:
+						print("Nothing to revert.")
+					continue
 
 				if next_line_index >= len(lines):
 					print("No more lines to scan for continuation.")
@@ -89,49 +97,127 @@ def review_detected_urls(raw_text: str) -> list[str]:
 					print("No URL-like continuation found on next line.")
 					continue
 
+				history.append(candidate)
 				candidate = strip_trailing_url_punctuation(candidate + continuation)
 
 	return accepted_urls
+
+
+def collect_detected_urls(flat_text: str) -> list[str]:
+	raw_links = re.findall(r"https?://\S+|www\.\S+", flat_text)
+	return [strip_trailing_url_punctuation(link) for link in raw_links if strip_trailing_url_punctuation(link)]
+
+
+def collect_url_occurrences(raw_text: str) -> list[dict[str, int | str]]:
+	occurrences: list[dict[str, int | str]] = []
+	lines = raw_text.splitlines()
+
+	for line_index, line in enumerate(lines):
+		for match in re.finditer(r"https?://\S+|www\.\S+", line):
+			url = strip_trailing_url_punctuation(match.group(0))
+			if not url:
+				continue
+			occurrences.append({"url": url, "next_line_index": line_index + 1})
+
+	return occurrences
+
+
+def has_duplicates(urls: list[str]) -> bool:
+	return len(urls) != len(set(urls))
+
+
+def resolve_duplicate_urls_with_more_lines(raw_text: str, max_rounds: int = 8) -> list[str]:
+	lines = raw_text.splitlines()
+	occurrences = collect_url_occurrences(raw_text)
+
+	if not occurrences:
+		return []
+
+	for _ in range(max_rounds):
+		urls = [str(entry["url"]) for entry in occurrences]
+		if not has_duplicates(urls):
+			return urls
+
+		counts: dict[str, int] = {}
+		for url in urls:
+			counts[url] = counts.get(url, 0) + 1
+
+		duplicate_urls = {url for url, count in counts.items() if count > 1}
+		progress_made = False
+
+		for entry in occurrences:
+			current_url = str(entry["url"])
+			if current_url not in duplicate_urls:
+				continue
+
+			next_line_index = int(entry["next_line_index"])
+			if next_line_index >= len(lines):
+				continue
+
+			continuation = scan_url_continuation_from_line(lines[next_line_index])
+			entry["next_line_index"] = next_line_index + 1
+
+			if not continuation:
+				continue
+
+			entry["url"] = strip_trailing_url_punctuation(current_url + continuation)
+			progress_made = True
+
+		if not progress_made:
+			break
+
+	return [str(entry["url"]) for entry in occurrences]
 
 
 def main() -> None:
 	import_dir = Path("./import")
 
 	if not import_dir.exists() or not import_dir.is_dir():
-		print("cancel")
+		print("cancel no dir")
 		return
 
 	files = [p for p in import_dir.iterdir() if p.is_file()]
 	if len(files) != 1:
-		print("cancel")
+		print("cancel file count")
 		return
 
 	target_file = files[0]
 	if target_file.suffix.lower() != ".pdf":
-		print("cancel")
+		print("cancel not pdf")
 		return
 
 	try:
 		reader = PdfReader(str(target_file))
 		text = "\n".join((page.extract_text() or "") for page in reader.pages)
 	except Exception:
-		print("cancel")
+		print("cancel pdf extraction")
 		return
 
 	flat_text = flatten_text_preserving_wrapped_urls(text)
-	if not re.search(r"https?://\S+|www\.\S+", flat_text):
-		print("cancel")
+	detected_links = collect_detected_urls(flat_text)
+	if not detected_links:
+		print("cancel no urls found")
 		return
 
-	print("Review each detected URL. Use Enter to accept, or type anything to mark incomplete.")
+	if has_duplicates(detected_links):
+		detected_links = resolve_duplicate_urls_with_more_lines(text)
+		if not detected_links or has_duplicates(detected_links):
+			print("cancel")
+			return
+
+	print("Review each detected URL. Use Enter to accept, 'r' to revert last change, or type anything to mark incomplete.")
 	links = review_detected_urls(text)
 
 	if not links:
 		print("cancel")
 		return
 
+	results_file = Path("results.txt")
+	results_file.write_text("\n".join(links) + "\n", encoding="utf-8")
+
 	print("\nAccepted URLs:")
 	print("\n".join(links))
+	print(f"\nSaved to {results_file}")
 
 
 if __name__ == "__main__":
