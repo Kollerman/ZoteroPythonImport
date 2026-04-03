@@ -61,11 +61,21 @@ def scan_url_continuation_from_line(line: str) -> str:
 	return match.group(1)
 
 
+def find_next_section(lines: list[str], start_index: int) -> tuple[str, int]:
+	index = start_index
+	while index < len(lines):
+		continuation = scan_url_continuation_from_line(lines[index])
+		index += 1
+		if continuation:
+			return continuation, index
+	return "", len(lines)
+
+
 class UrlReviewGui:
 	def __init__(self, raw_text: str):
 		self.lines = raw_text.splitlines()
 		self.occurrences = collect_url_occurrences(raw_text)
-		self.accepted_urls: list[str] = []
+		self.accepted_records: list[dict[str, str]] = []
 
 		self.current_index = 0
 		self.candidate = ""
@@ -142,13 +152,7 @@ class UrlReviewGui:
 		self.root.bind("R", self.on_revert_key)
 
 	def find_next_section(self, start_index: int) -> tuple[str, int]:
-		index = start_index
-		while index < len(self.lines):
-			continuation = scan_url_continuation_from_line(self.lines[index])
-			index += 1
-			if continuation:
-				return continuation, index
-		return "", len(self.lines)
+		return find_next_section(self.lines, start_index)
 
 	def load_occurrence(self) -> None:
 		if self.current_index >= len(self.occurrences):
@@ -178,7 +182,16 @@ class UrlReviewGui:
 
 	def accept_current(self) -> None:
 		if self.candidate:
-			self.accepted_urls.append(self.candidate)
+			suggestion = ""
+			if self.preview_section:
+				suggestion = strip_trailing_url_punctuation(self.candidate + self.preview_section)
+			self.accepted_records.append(
+				{
+					"accepted": self.candidate,
+					"suggested": suggestion,
+					"final": self.candidate,
+				}
+			)
 		self.current_index += 1
 		self.load_occurrence()
 
@@ -222,7 +235,196 @@ class UrlReviewGui:
 		else:
 			self.load_occurrence()
 		self.root.mainloop()
-		return self.accepted_urls
+
+		if not self.accepted_records:
+			return []
+
+		editor = FinalLinksEditorGui(self.accepted_records)
+		return editor.run()
+
+
+class FinalLinksEditorGui:
+	def __init__(self, records: list[dict[str, str]]):
+		self.records = records
+		self.done = False
+
+		self.root = tk.Tk()
+		self.root.title("Accepted Links Overview")
+		self.root.geometry("1200x620")
+		self.root.minsize(1000, 520)
+		self.root.protocol("WM_DELETE_WINDOW", self.close)
+
+		container = tk.Frame(self.root, padx=16, pady=16)
+		container.pack(fill="both", expand=True)
+
+		title = tk.Label(
+			container,
+			text="Overview of accepted links, possible joined links, and final editable values",
+			font=("Segoe UI", 13, "bold"),
+		)
+		title.pack(anchor="w", pady=(0, 10))
+
+		body = tk.Frame(container)
+		body.pack(fill="both", expand=True)
+
+		left = tk.LabelFrame(body, text="Accepted items", padx=10, pady=10)
+		left.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+		self.listbox = tk.Listbox(left)
+		self.listbox.pack(fill="both", expand=True)
+		self.listbox.bind("<<ListboxSelect>>", self.on_select_row)
+
+		right = tk.LabelFrame(body, text="Selected item details", padx=10, pady=10)
+		right.pack(side="left", fill="both", expand=True)
+
+		self.accepted_var = tk.StringVar()
+		self.suggested_var = tk.StringVar()
+		self.final_var = tk.StringVar()
+		self.status_var = tk.StringVar()
+
+		tk_accepted_label = tk.Label(right, text="Accepted link", anchor="w", font=("Segoe UI", 10, "bold"))
+		tk_accepted_label.pack(fill="x")
+		tk_accepted_value = tk.Label(right, textvariable=self.accepted_var, justify="left", anchor="w", wraplength=520)
+		tk_accepted_value.pack(fill="x", pady=(2, 8))
+
+		tk_suggested_label = tk.Label(right, text="Possible joined link", anchor="w", font=("Segoe UI", 10, "bold"))
+		tk_suggested_label.pack(fill="x")
+		tk_suggested_value = tk.Label(right, textvariable=self.suggested_var, justify="left", anchor="w", wraplength=520)
+		tk_suggested_value.pack(fill="x", pady=(2, 8))
+
+		final_label = tk.Label(right, text="Final editable link", anchor="w", font=("Segoe UI", 10, "bold"))
+		final_label.pack(fill="x")
+		final_entry = tk.Entry(right, textvariable=self.final_var)
+		final_entry.pack(fill="x", pady=(2, 8))
+
+		row_actions = tk.Frame(right)
+		row_actions.pack(fill="x")
+
+		use_accepted_btn = tk.Button(row_actions, text="Use accepted", command=self.use_accepted)
+		use_accepted_btn.pack(side="left")
+
+		use_suggested_btn = tk.Button(row_actions, text="Use suggested", command=self.use_suggested)
+		use_suggested_btn.pack(side="left", padx=(8, 0))
+
+		save_row_btn = tk.Button(row_actions, text="Save row", command=self.save_current_row)
+		save_row_btn.pack(side="left", padx=(8, 0))
+
+		footer = tk.Frame(container)
+		footer.pack(fill="x", pady=(10, 0))
+
+		finish_btn = tk.Button(
+			footer,
+			text="Finish and continue",
+			bg="#2E7D32",
+			fg="white",
+			activebackground="#1B5E20",
+			font=("Segoe UI", 10, "bold"),
+			command=self.finish,
+		)
+		finish_btn.pack(side="left")
+
+		status_label = tk.Label(footer, textvariable=self.status_var, anchor="w")
+		status_label.pack(side="left", padx=(12, 0))
+
+		self.root.bind("<Control-s>", self.on_ctrl_s)
+		self.root.bind("<Return>", self.on_enter)
+
+		self.populate_rows()
+
+	def row_text(self, index: int) -> str:
+		record = self.records[index]
+		accepted = record["accepted"]
+		final = record["final"]
+		marker = "*" if final != accepted else " "
+		return f"{index + 1:03d}{marker} {final}"
+
+	def populate_rows(self) -> None:
+		self.listbox.delete(0, tk.END)
+		for idx in range(len(self.records)):
+			self.listbox.insert(tk.END, self.row_text(idx))
+
+		if self.records:
+			self.listbox.selection_set(0)
+			self.show_row(0)
+
+	def selected_index(self) -> int | None:
+		selection = self.listbox.curselection()
+		if not selection:
+			return None
+		return int(selection[0])
+
+	def show_row(self, index: int) -> None:
+		record = self.records[index]
+		self.accepted_var.set(record["accepted"])
+		self.suggested_var.set(record["suggested"] or "(No suggestion available)")
+		self.final_var.set(record["final"])
+		self.status_var.set(f"Editing item {index + 1}/{len(self.records)}")
+
+	def on_select_row(self, _event: tk.Event) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			return
+		self.show_row(idx)
+
+	def save_current_row(self) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			self.status_var.set("Select a row first.")
+			return
+
+		new_value = strip_trailing_url_punctuation(self.final_var.get().strip())
+		if not new_value:
+			self.status_var.set("Final link cannot be empty.")
+			return
+
+		self.records[idx]["final"] = new_value
+		self.listbox.delete(idx)
+		self.listbox.insert(idx, self.row_text(idx))
+		self.listbox.selection_clear(0, tk.END)
+		self.listbox.selection_set(idx)
+		self.status_var.set(f"Saved item {idx + 1}.")
+
+	def use_accepted(self) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			return
+		self.final_var.set(self.records[idx]["accepted"])
+
+	def use_suggested(self) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			return
+		suggested = self.records[idx]["suggested"]
+		if not suggested:
+			self.status_var.set("No suggestion available for this item.")
+			return
+		self.final_var.set(suggested)
+
+	def finish(self) -> None:
+		idx = self.selected_index()
+		if idx is not None:
+			self.save_current_row()
+
+		self.done = True
+		self.close()
+
+	def on_ctrl_s(self, _event: tk.Event) -> str:
+		self.save_current_row()
+		return "break"
+
+	def on_enter(self, _event: tk.Event) -> str:
+		self.save_current_row()
+		return "break"
+
+	def close(self) -> None:
+		self.root.quit()
+		self.root.destroy()
+
+	def run(self) -> list[str]:
+		self.root.mainloop()
+		if not self.done:
+			return []
+		return [record["final"] for record in self.records if record["final"]]
 
 
 def review_detected_urls(raw_text: str) -> list[str]:
@@ -296,8 +498,182 @@ def resolve_duplicate_urls_with_more_lines(raw_text: str, max_rounds: int = 8) -
 	return [str(entry["url"]) for entry in occurrences]
 
 
+def read_existing_results(results_file: Path) -> list[str]:
+	if not results_file.exists() or not results_file.is_file():
+		return []
+
+	text = results_file.read_text(encoding="utf-8", errors="ignore")
+	return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def build_suggestion_for_link(link: str, lines: list[str], occurrences: list[dict[str, int | str]]) -> str:
+	for occurrence in occurrences:
+		current = str(occurrence["url"])
+		next_line_index = int(occurrence["next_line_index"])
+
+		if not link.startswith(current):
+			continue
+
+		while True:
+			if current == link:
+				next_section, _ = find_next_section(lines, next_line_index)
+				if not next_section:
+					return ""
+				return strip_trailing_url_punctuation(current + next_section)
+
+			next_section, new_next_line_index = find_next_section(lines, next_line_index)
+			if not next_section:
+				break
+
+			extended = strip_trailing_url_punctuation(current + next_section)
+			if not link.startswith(extended):
+				break
+
+			current = extended
+			next_line_index = new_next_line_index
+
+	return ""
+
+
+def build_records_from_links(links: list[str], raw_text: str) -> list[dict[str, str]]:
+	lines = raw_text.splitlines()
+	occurrences = collect_url_occurrences(raw_text)
+	records: list[dict[str, str]] = []
+
+	for link in links:
+		suggestion = build_suggestion_for_link(link, lines, occurrences)
+		records.append({"accepted": link, "suggested": suggestion, "final": link})
+
+	return records
+
+
+def unique_preserve_order(urls: list[str]) -> list[str]:
+	seen: set[str] = set()
+	unique_urls: list[str] = []
+	for url in urls:
+		if url in seen:
+			continue
+		seen.add(url)
+		unique_urls.append(url)
+	return unique_urls
+
+
+def extract_links_with_pdfx(pdf_path: Path) -> list[str]:
+	try:
+		import pdfx  # type: ignore
+	except Exception:
+		return []
+
+	try:
+		pdf = pdfx.PDFx(str(pdf_path))
+		raw_references = pdf.get_references()
+	except Exception:
+		return []
+
+	if not isinstance(raw_references, list):
+		return []
+
+	normalized: list[str] = []
+	for reference in raw_references:
+		if not isinstance(reference, str):
+			continue
+		cleaned = strip_trailing_url_punctuation(reference.strip())
+		if cleaned:
+			normalized.append(cleaned)
+
+	return unique_preserve_order(normalized)
+
+
+def write_results(results_file: Path, links: list[str]) -> None:
+	results_file.write_text("\n".join(links) + "\n", encoding="utf-8")
+
+
+def pick_mode_gui(has_existing_results: bool) -> str:
+	selection = {"mode": "cancel"}
+
+	root = tk.Tk()
+	root.title("Choose Startup Mode")
+	root.geometry("560x300")
+	root.minsize(520, 260)
+
+	def select_mode(mode: str) -> None:
+		selection["mode"] = mode
+		root.quit()
+		root.destroy()
+
+	def cancel() -> None:
+		selection["mode"] = "cancel"
+		root.quit()
+		root.destroy()
+
+	root.protocol("WM_DELETE_WINDOW", cancel)
+
+	container = tk.Frame(root, padx=16, pady=16)
+	container.pack(fill="both", expand=True)
+
+	title = tk.Label(container, text="How should this run start?", font=("Segoe UI", 14, "bold"))
+	title.pack(anchor="w", pady=(0, 10))
+
+	description = tk.Label(
+		container,
+		text="Select one mode. You can use buttons or keyboard shortcuts.",
+		anchor="w",
+	)
+	description.pack(anchor="w", pady=(0, 10))
+
+	button_area = tk.Frame(container)
+	button_area.pack(fill="x")
+
+	review_btn = tk.Button(
+		button_area,
+		text="1. Guided review",
+		bg="#2E7D32",
+		fg="white",
+		activebackground="#1B5E20",
+		font=("Segoe UI", 10, "bold"),
+		command=lambda: select_mode("review"),
+	)
+	review_btn.pack(fill="x", pady=(0, 8))
+
+	pdfx_btn = tk.Button(
+		button_area,
+		text="2. Extract embedded links (pdfx)",
+		bg="#1565C0",
+		fg="white",
+		activebackground="#0D47A1",
+		font=("Segoe UI", 10, "bold"),
+		command=lambda: select_mode("pdfx"),
+	)
+	pdfx_btn.pack(fill="x", pady=(0, 8))
+
+	if has_existing_results:
+		edit_btn = tk.Button(
+			button_area,
+			text="3. Edit existing results.txt",
+			bg="#6A1B9A",
+			fg="white",
+			activebackground="#4A148C",
+			font=("Segoe UI", 10, "bold"),
+			command=lambda: select_mode("edit"),
+		)
+		edit_btn.pack(fill="x", pady=(0, 8))
+
+	cancel_btn = tk.Button(button_area, text="Cancel (Esc)", command=cancel)
+	cancel_btn.pack(fill="x")
+
+	root.bind("1", lambda _event: select_mode("review"))
+	root.bind("2", lambda _event: select_mode("pdfx"))
+	if has_existing_results:
+		root.bind("3", lambda _event: select_mode("edit"))
+	root.bind("<Escape>", lambda _event: cancel())
+
+	root.mainloop()
+	return str(selection["mode"])
+
+
 def main() -> None:
 	import_dir = Path("./import")
+	results_file = Path("results.txt")
 
 	if not import_dir.exists() or not import_dir.is_dir():
 		print("cancel no dir")
@@ -313,12 +689,44 @@ def main() -> None:
 		print("cancel not pdf")
 		return
 
+	existing_links = read_existing_results(results_file)
+	mode = pick_mode_gui(has_existing_results=bool(existing_links))
+	if mode == "cancel":
+		print("cancel")
+		return
+
+	if mode == "pdfx":
+		links = extract_links_with_pdfx(target_file)
+		if not links:
+			print("cancel pdfx no links found")
+			return
+
+		write_results(results_file, links)
+		print("\nExtracted URLs (pdfx):")
+		print("\n".join(links))
+		print(f"\nSaved to {results_file}")
+		return
+
 	try:
 		reader = PdfReader(str(target_file))
 		text = "\n".join((page.extract_text() or "") for page in reader.pages)
 	except Exception:
 		print("cancel pdf extraction")
 		return
+
+	if existing_links and mode == "edit":
+			records = build_records_from_links(existing_links, text)
+			links = FinalLinksEditorGui(records).run()
+
+			if not links:
+				print("cancel")
+				return
+
+			write_results(results_file, links)
+			print("\nFinal URLs:")
+			print("\n".join(links))
+			print(f"\nSaved to {results_file}")
+			return
 
 	flat_text = flatten_text_preserving_wrapped_urls(text)
 	detected_links = collect_detected_urls(flat_text)
@@ -339,8 +747,7 @@ def main() -> None:
 		print("cancel")
 		return
 
-	results_file = Path("results.txt")
-	results_file.write_text("\n".join(links) + "\n", encoding="utf-8")
+	write_results(results_file, links)
 
 	print("\nAccepted URLs:")
 	print("\n".join(links))
