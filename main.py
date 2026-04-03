@@ -73,6 +73,7 @@ def find_next_section(lines: list[str], start_index: int) -> tuple[str, int]:
 
 class UrlReviewGui:
 	def __init__(self, raw_text: str):
+		self.raw_text = raw_text
 		self.lines = raw_text.splitlines()
 		self.occurrences = collect_url_occurrences(raw_text)
 		self.accepted_records: list[dict[str, str]] = []
@@ -239,14 +240,19 @@ class UrlReviewGui:
 		if not self.accepted_records:
 			return []
 
-		editor = FinalLinksEditorGui(self.accepted_records)
+		editor = FinalLinksEditorGui(self.accepted_records, raw_text=self.raw_text)
 		return editor.run()
 
 
 class FinalLinksEditorGui:
-	def __init__(self, records: list[dict[str, str]]):
+	def __init__(self, records: list[dict[str, str]], raw_text: str | None = None):
 		self.records = records
 		self.done = False
+		self.lines: list[str] = []
+		self.occurrences: list[dict[str, int | str]] = []
+		if raw_text:
+			self.lines = raw_text.splitlines()
+			self.occurrences = collect_url_occurrences(raw_text)
 
 		self.root = tk.Tk()
 		self.root.title("Accepted Links Overview")
@@ -305,6 +311,12 @@ class FinalLinksEditorGui:
 
 		use_suggested_btn = tk.Button(row_actions, text="Use suggested", command=self.use_suggested)
 		use_suggested_btn.pack(side="left", padx=(8, 0))
+
+		update_suggestion_btn = tk.Button(row_actions, text="Update suggestion", command=self.update_suggestion)
+		update_suggestion_btn.pack(side="left", padx=(8, 0))
+
+		delete_row_btn = tk.Button(row_actions, text="Delete link", bg="#B71C1C", fg="white", command=self.delete_current_row)
+		delete_row_btn.pack(side="left", padx=(8, 0))
 
 		save_row_btn = tk.Button(row_actions, text="Save row", command=self.save_current_row)
 		save_row_btn.pack(side="left", padx=(8, 0))
@@ -384,6 +396,27 @@ class FinalLinksEditorGui:
 		self.listbox.selection_set(idx)
 		self.status_var.set(f"Saved item {idx + 1}.")
 
+	def delete_current_row(self) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			self.status_var.set("Select a row first.")
+			return
+
+		del self.records[idx]
+		self.populate_rows()
+		if not self.records:
+			self.accepted_var.set("")
+			self.suggested_var.set("")
+			self.final_var.set("")
+			self.status_var.set("All links deleted.")
+			return
+
+		next_idx = min(idx, len(self.records) - 1)
+		self.listbox.selection_clear(0, tk.END)
+		self.listbox.selection_set(next_idx)
+		self.show_row(next_idx)
+		self.status_var.set(f"Deleted item {idx + 1}.")
+
 	def use_accepted(self) -> None:
 		idx = self.selected_index()
 		if idx is None:
@@ -399,6 +432,36 @@ class FinalLinksEditorGui:
 			self.status_var.set("No suggestion available for this item.")
 			return
 		self.final_var.set(suggested)
+
+	def update_suggestion(self) -> None:
+		idx = self.selected_index()
+		if idx is None:
+			self.status_var.set("Select a row first.")
+			return
+
+		base_link = strip_trailing_url_punctuation(self.final_var.get().strip())
+		if not base_link:
+			self.status_var.set("Enter a link before updating suggestion.")
+			return
+
+		if not self.lines or not self.occurrences:
+			self.status_var.set("No PDF context available for suggestion update.")
+			return
+
+		suggestion = build_suggestion_for_link(base_link, self.lines, self.occurrences)
+		self.records[idx]["accepted"] = base_link
+		self.records[idx]["final"] = base_link
+		self.records[idx]["suggested"] = suggestion
+		self.accepted_var.set(base_link)
+		self.suggested_var.set(suggestion or "(No suggestion available)")
+		self.listbox.delete(idx)
+		self.listbox.insert(idx, self.row_text(idx))
+		self.listbox.selection_clear(0, tk.END)
+		self.listbox.selection_set(idx)
+		if suggestion:
+			self.status_var.set("Suggestion updated.")
+		else:
+			self.status_var.set("No new suggestion found for this link.")
 
 	def finish(self) -> None:
 		idx = self.selected_index()
@@ -770,7 +833,7 @@ def main() -> None:
 
 	if existing_links and mode == "edit":
 			records = build_records_from_links(existing_links, text)
-			links = FinalLinksEditorGui(records).run()
+			links = FinalLinksEditorGui(records, raw_text=text).run()
 
 			if not links:
 				print("cancel")
