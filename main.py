@@ -710,6 +710,16 @@ def merge_result_files(manual_file: Path, auto_file: Path, merged_file: Path) ->
 	return merged_links
 
 
+def subtract_manual_from_auto(manual_file: Path, auto_file: Path, diff_file: Path) -> list[str]:
+	manual_links = set(read_existing_results(manual_file))
+	auto_links = read_existing_results(auto_file)
+	diff_links = [link for link in auto_links if link not in manual_links]
+	diff_links = unique_preserve_order(diff_links)
+	if diff_links:
+		write_results(diff_file, diff_links)
+	return diff_links
+
+
 def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -> str:
 	selection = {"mode": "cancel"}
 
@@ -792,6 +802,18 @@ def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -
 		)
 		merge_btn.pack(fill="x", pady=(0, 8))
 
+	if has_existing_results and has_existing_auto_results:
+		diff_btn = tk.Button(
+			button_area,
+			text="5. Auto minus manual (result_dif.txt)",
+			bg="#00897B",
+			fg="white",
+			activebackground="#00695C",
+			font=("Segoe UI", 10, "bold"),
+			command=lambda: select_mode("diff"),
+		)
+		diff_btn.pack(fill="x", pady=(0, 8))
+
 	cancel_btn = tk.Button(button_area, text="Cancel (Esc)", command=cancel)
 	cancel_btn.pack(fill="x")
 
@@ -801,6 +823,8 @@ def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -
 		root.bind("3", lambda _event: select_mode("edit"))
 	if has_existing_results and has_existing_auto_results:
 		root.bind("4", lambda _event: select_mode("merge"))
+	if has_existing_results and has_existing_auto_results:
+		root.bind("5", lambda _event: select_mode("diff"))
 	root.bind("<Escape>", lambda _event: cancel())
 
 	root.mainloop()
@@ -812,6 +836,7 @@ def main() -> None:
 	results_file = Path("results.txt")
 	results_auto_file = Path("results_auto.txt")
 	results_merged_file = Path("results_merged.txt")
+	result_dif_file = Path("result_dif.txt")
 
 	if not import_dir.exists() or not import_dir.is_dir():
 		print("cancel no dir")
@@ -858,6 +883,17 @@ def main() -> None:
 		print("\nMerged URLs:")
 		print("\n".join(merged_links))
 		print(f"\nSaved to {results_merged_file}")
+		return
+
+	if mode == "diff":
+		diff_links = subtract_manual_from_auto(results_file, results_auto_file, result_dif_file)
+		if not diff_links:
+			print("cancel diff no links found")
+			return
+
+		print("\nDifference URLs (auto - manual):")
+		print("\n".join(diff_links))
+		print(f"\nSaved to {result_dif_file}")
 		return
 
 	try:
