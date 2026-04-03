@@ -1,6 +1,9 @@
 # ZoteroPythonImport
 
 GUI tool to extract, review, edit, and compare links from a PDF before exporting text files for Zotero workflows.
+Highly specific.
+Only semi automatic.
+Use at your own risk lol.
 
 ## Requirements
 
