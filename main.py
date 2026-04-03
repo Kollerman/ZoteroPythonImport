@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import tkinter as tk
 
 from pypdf import PdfReader
 
@@ -60,47 +61,173 @@ def scan_url_continuation_from_line(line: str) -> str:
 	return match.group(1)
 
 
+class UrlReviewGui:
+	def __init__(self, raw_text: str):
+		self.lines = raw_text.splitlines()
+		self.occurrences = collect_url_occurrences(raw_text)
+		self.accepted_urls: list[str] = []
+
+		self.current_index = 0
+		self.candidate = ""
+		self.next_line_index = 0
+		self.history: list[tuple[str, int]] = []
+		self.preview_section = ""
+		self.preview_next_index = 0
+
+		self.root = tk.Tk()
+		self.root.title("URL Reviewer")
+		self.root.geometry("1100x420")
+		self.root.minsize(900, 360)
+		self.root.protocol("WM_DELETE_WINDOW", self.close)
+
+		self.current_var = tk.StringVar()
+		self.joined_var = tk.StringVar()
+		self.status_var = tk.StringVar()
+
+		container = tk.Frame(self.root, padx=16, pady=16)
+		container.pack(fill="both", expand=True)
+
+		title_label = tk.Label(container, text="Review detected URLs", font=("Segoe UI", 14, "bold"))
+		title_label.pack(anchor="w", pady=(0, 10))
+
+		panels = tk.Frame(container)
+		panels.pack(fill="both", expand=True)
+
+		left = tk.LabelFrame(panels, text="Current address", padx=12, pady=12)
+		left.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+		left_value = tk.Label(left, textvariable=self.current_var, justify="left", anchor="nw", wraplength=430)
+		left_value.pack(fill="both", expand=True)
+
+		accept_button = tk.Button(
+			left,
+			text="Accept current (1)",
+			bg="#2E7D32",
+			fg="white",
+			activebackground="#1B5E20",
+			font=("Segoe UI", 11, "bold"),
+			command=self.accept_current,
+		)
+		accept_button.pack(fill="x", pady=(10, 0))
+
+		right = tk.LabelFrame(panels, text="Address with next section", padx=12, pady=12)
+		right.pack(side="left", fill="both", expand=True)
+
+		right_value = tk.Label(right, textvariable=self.joined_var, justify="left", anchor="nw", wraplength=430)
+		right_value.pack(fill="both", expand=True)
+
+		join_button = tk.Button(
+			right,
+			text="Join next section (2)",
+			bg="#C62828",
+			fg="white",
+			activebackground="#8E0000",
+			font=("Segoe UI", 11, "bold"),
+			command=self.join_next_section,
+		)
+		join_button.pack(fill="x", pady=(10, 0))
+
+		footer = tk.Frame(container)
+		footer.pack(fill="x", pady=(10, 0))
+
+		revert_button = tk.Button(footer, text="Revert last action (r)", command=self.revert_last_action)
+		revert_button.pack(side="left")
+
+		status_label = tk.Label(footer, textvariable=self.status_var, anchor="w")
+		status_label.pack(side="left", padx=(12, 0))
+
+		self.root.bind("1", self.on_accept_key)
+		self.root.bind("2", self.on_join_key)
+		self.root.bind("r", self.on_revert_key)
+		self.root.bind("R", self.on_revert_key)
+
+	def find_next_section(self, start_index: int) -> tuple[str, int]:
+		index = start_index
+		while index < len(self.lines):
+			continuation = scan_url_continuation_from_line(self.lines[index])
+			index += 1
+			if continuation:
+				return continuation, index
+		return "", len(self.lines)
+
+	def load_occurrence(self) -> None:
+		if self.current_index >= len(self.occurrences):
+			self.status_var.set("Review complete. Close the window.")
+			self.root.after(50, self.close)
+			return
+
+		entry = self.occurrences[self.current_index]
+		self.candidate = str(entry["url"])
+		self.next_line_index = int(entry["next_line_index"])
+		self.history.clear()
+		self.refresh_view()
+
+	def refresh_view(self) -> None:
+		self.preview_section, self.preview_next_index = self.find_next_section(self.next_line_index)
+
+		self.current_var.set(self.candidate)
+		if self.preview_section:
+			joined_preview = strip_trailing_url_punctuation(self.candidate + self.preview_section)
+			self.joined_var.set(joined_preview)
+		else:
+			self.joined_var.set("(No further section found)")
+
+		reviewed = self.current_index + 1
+		total = len(self.occurrences)
+		self.status_var.set(f"Item {reviewed}/{total}")
+
+	def accept_current(self) -> None:
+		if self.candidate:
+			self.accepted_urls.append(self.candidate)
+		self.current_index += 1
+		self.load_occurrence()
+
+	def join_next_section(self) -> None:
+		if not self.preview_section:
+			self.status_var.set("No next section available to join.")
+			return
+
+		self.history.append((self.candidate, self.next_line_index))
+		self.candidate = strip_trailing_url_punctuation(self.candidate + self.preview_section)
+		self.next_line_index = self.preview_next_index
+		self.refresh_view()
+
+	def revert_last_action(self) -> None:
+		if not self.history:
+			self.status_var.set("Nothing to revert.")
+			return
+
+		self.candidate, self.next_line_index = self.history.pop()
+		self.refresh_view()
+
+	def on_accept_key(self, _event: tk.Event) -> str:
+		self.accept_current()
+		return "break"
+
+	def on_join_key(self, _event: tk.Event) -> str:
+		self.join_next_section()
+		return "break"
+
+	def on_revert_key(self, _event: tk.Event) -> str:
+		self.revert_last_action()
+		return "break"
+
+	def close(self) -> None:
+		self.root.quit()
+		self.root.destroy()
+
+	def run(self) -> list[str]:
+		if not self.occurrences:
+			self.root.after(50, self.close)
+		else:
+			self.load_occurrence()
+		self.root.mainloop()
+		return self.accepted_urls
+
+
 def review_detected_urls(raw_text: str) -> list[str]:
-	lines = raw_text.splitlines()
-	accepted_urls: list[str] = []
-
-	for line_index, line in enumerate(lines):
-		for match in re.finditer(r"https?://\S+|www\.\S+", line):
-			candidate = strip_trailing_url_punctuation(match.group(0))
-			next_line_index = line_index + 1
-			history: list[str] = []
-
-			while True:
-				print(f"\nDetected URL: {candidate}")
-				decision = input("Press Enter if correct, type 'r' to revert last change, any other key then Enter for incomplete: ")
-
-				if decision == "":
-					if candidate:
-						accepted_urls.append(candidate)
-					break
-
-				if decision.lower() == "r":
-					if history:
-						candidate = history.pop()
-					else:
-						print("Nothing to revert.")
-					continue
-
-				if next_line_index >= len(lines):
-					print("No more lines to scan for continuation.")
-					break
-
-				continuation = scan_url_continuation_from_line(lines[next_line_index])
-				next_line_index += 1
-
-				if not continuation:
-					print("No URL-like continuation found on next line.")
-					continue
-
-				history.append(candidate)
-				candidate = strip_trailing_url_punctuation(candidate + continuation)
-
-	return accepted_urls
+	gui = UrlReviewGui(raw_text)
+	return gui.run()
 
 
 def collect_detected_urls(flat_text: str) -> list[str]:
@@ -205,7 +332,7 @@ def main() -> None:
 			print("cancel")
 			return
 
-	print("Review each detected URL. Use Enter to accept, 'r' to revert last change, or type anything to mark incomplete.")
+	print("Launching URL review GUI. Use 1=accept, 2=join next section, r=revert.")
 	links = review_detected_urls(text)
 
 	if not links:

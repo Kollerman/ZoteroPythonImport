@@ -1,3 +1,6 @@
+http://dx.doi.org/10.1037/emo0000380
+http://dx.doi.org/10.1037/emo0000380
+http://dx.doi.org/10.1037/emo00003801
 http://dx.doi.org/10.1177/0146167207311201
 http://dx.doi.org/10.1016/0023-9690(91)90016-2
 http://dx.doi.org/10.1037/0096-3445.134.2.258
@@ -7,6 +10,7 @@ http://dx.doi.org/10.1007/s00426-017-0895-1
 http://dx.doi.org/10.1037/h0028119
 http://dx.doi.org/10.1016/j.cobeha.2016.01.007
 http://dx.doi.org/10.3758/s13414-012-0308-x
+https://www.nytimes.com/2016/03/27/your-money/why-we-think-were-better-investors-than-we-are.html
 http://dx.doi.org/10.2466/pms.1965.20.3.969
 http://dx.doi.org/10.1186/1744-9081-3-7
 http://dx.doi.org/10.3389/fpsyg.2014.00648
@@ -19,7 +23,7 @@ http://dx.doi.org/10.1016/j.neuron.2015.05.031
 http://dx.doi.org/10.3758/APP.71.1.82
 http://dx.doi.org/10.1177/0146167299025002007
 http://dx.doi.org/10.1017/S0140525X12000477
-http://dx.doi.org/10.2501/JAR-2016-045
+http://dx.doi.org/
 http://dx.doi.org/10.1037/0033-295X.82.6.407
 http://dx.doi.org/10.1027/1618-3169/a000018
 http://dx.doi.org/10.1016/j.brainres.2005.11.074
@@ -28,6 +32,7 @@ http://dx.doi.org/10.3758/BF03196380
 http://dx.doi.org/10.1016/j.brainres.2005.11.094
 http://dx.doi.org/10.1371/journal.pbio.1000166
 http://dx.doi.org/10.1038/npp.2010.113
+http://www.jneurosci.org/content/18/18/7426.long
 http://dx.doi.org/10.1093/cercor/11.1.73
 http://dx.doi.org/10.1108/09604520110387257
 http://dx.doi.org/10.1016/j.intcom.2011.05.008
@@ -48,6 +53,7 @@ http://dx.doi.org/10.1037/1528-3542.8.4.441
 http://dx.doi.org/10.1037/a0012887
 http://dx.doi.org/10.3758/s13415-012-0147-1
 http://dx.doi.org/10.1016/j.biopsycho.2011.03.008
+https://www.researchgate.net/profile/Sylvie_Droit-Volet/publication/228479772_How_do_emotional_facial_expressions_influence_our_perception_of_time/links/53fdd09a0cf2dca800039250.pdf
 http://dx.doi.org/10.1111/j.1467-9450.2010.00858.x
 http://dx.doi.org/10.1126/science.1144161
 http://dx.doi.org/10.1016/j.neuropsychologia.2014.07.015
@@ -56,6 +62,7 @@ http://dx.doi.org/10.3389/fnbeh.2015.00143
 http://dx.doi.org/10.3389/fnbeh.2016.00008
 http://dx.doi.org/10.1163/22134468-00002061
 http://dx.doi.org/10.1007/s12525-016-0224-3
+https://well.blogs.nytimes.com/2015/11/02/while-waiting-for-test-results-worrying-may-help-in-the-long-run/
 http://dx.doi.org/10.1111/nous.12062
 http://dx.doi.org/10.1002/mar.4220010206
 http://dx.doi.org/10.1016/j.neuroimage.2011.06.093
@@ -83,7 +90,7 @@ http://dx.doi.org/10.1111/j.1469-8986.1993.tb03352.x
 http://dx.doi.org/10.1016/j.actpsy.2009.10.001
 http://dx.doi.org/10.1108/info-12-2015-0053
 http://dx.doi.org/10.1111/j.1460-2466.2008.01401.x
-http://dx.doi.org/10.1093/acprof:oso/9780199563456.003.0021
+http://dx.doi.org/10.1093/acprofoso/9780199563456.003.0021
 http://dx.doi.org/10.3758/BF03193549
 http://dx.doi.org/10.1037/0096-3445.134.1.52
 http://dx.doi.org/10.1016/S0001-6918(00)00029-9
@@ -91,17 +98,20 @@ http://dx.doi.org/10.3389/fpsyg.2014.01058
 http://dx.doi.org/10.1037/xhp0000279
 http://dx.doi.org/10.1016/j.cogpsych.2007.11.001
 http://dx.doi.org/10.1371/journal.pone.0021829
+http://doc.utwente.nl/102275/1/jcnv4i2_LummaNagel.pdf
 http://dx.doi.org/10.1016/j.neuropsychologia.2010.09.024
 http://dx.doi.org/10.1037/0033-295X.104.2.241
 http://dx.doi.org/10.1901/jeab.2009.92-423
 http://dx.doi.org/10.1167/5.3.6
 http://dx.doi.org/10.1037/1528-3542.2.4.315
+https://pdfs.semanticscholar.org/0f72/eeca053bf39dbf413ee9c9b0ac237f929309.pdf
 http://dx.doi.org/10.3758/s13414-012-0358-0
 http://dx.doi.org/10.1093/cercor/bhp052
 http://dx.doi.org/10.1016/j.neuroimage.2005.06.068
 http://dx.doi.org/10.1093/acprof:oso/9780199563456.001.0001
-http://dx.doi.org/10.1037/1528-3542.7.4.697O’Connor,C.,&
+http://dx.doi.org/10.1037/1528-3542.7.4.697O
 http://dx.doi.org/10.1177/1075547014549481
+http://www.psychnology.org/File/PNJ13(2-3)/PSYCHNOLOGY_JOURNAL_13_2_OLBERTZ-SIITONEN.pdf
 http://dx.doi.org/10.1007/s00221-006-0569-5
 http://dx.doi.org/10.1523/JNEUROSCI.1233-08.2008
 http://dx.doi.org/10.1007/s12525-014-0153-y
@@ -147,9 +157,10 @@ http://dx.doi.org/10.3758/s13423-014-0710-6
 http://dx.doi.org/10.1080/17470218.2011.616212
 http://dx.doi.org/10.1111/bjc.12086
 http://dx.doi.org/10.1093/acprof:oso/9780199563456.003.0022
-http://dx.doi.org/10.1016/j.actpsy.2004.03.003van
-http://dx.doi.org/10.1016/j.ijpsycho.2007.09.002Võ,M.L.H.,
-http://dx.doi.org/10.3758/BRM.41.2.534Võ,M.L-H.,
+http://dx.doi.org/10.1016/j.actpsy.2004.03.003
+http://dx.doi.org/10.1016/j.ijpsycho.2007.09.002
+http://dx.doi.org/10.3758/BRM.41.2.534
+http://lehoa.macmate.me/MelissaVo/Publications_files/
 http://dx.doi.org/10.1016/j.cortex.2017.04.019
 http://dx.doi.org/10.1016/j.jtbi.2005.08.024
 http://dx.doi.org/10.1027/1618-3169/a000054
@@ -166,13 +177,4 @@ http://dx.doi.org/10.3389/fnint.2011.00066
 http://dx.doi.org/10.1038/nrn3452
 http://dx.doi.org/10.1037/h0070462
 http://dx.doi.org/10.1037/h0029935
-http://dx.doi.org/10.1037/h0023328(1996).Theemotional
-http://dx.doi.org/10.1037/0033-2909.120.1.3
-http://dx.doi.org/10.3389/fnint.2011.00066
-http://dx.doi.org/10.1038/nrn3452
-http://dx.doi.org/10.1037/h0070462
-http://dx.doi.org/10.1037/h0029935
-http://dx.doi.org/10.1037/h0023328esentationofduration.Nature
-http://dx.doi.org/10.1038/nrn3452
-http://dx.doi.org/10.1037/h0070462
-http://dx.doi.org/10.1037/h0029935
+http://dx.doi.org/10.1037/h0023328
