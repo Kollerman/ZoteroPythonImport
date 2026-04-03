@@ -41,8 +41,9 @@ At startup, a GUI mode picker appears.
 1. Guided review
 2. Extract embedded links (pdfx)
 3. Edit existing `results.txt` (only shown when `results.txt` exists)
-4. Merge `results.txt` + `results_auto.txt` (only shown when both exist)
-5. Auto minus manual (`result_dif.txt`) (only shown when both exist)
+4. Cleanup auto `results_auto.txt` (only shown when `results_auto.txt` exists)
+5. Merge `results.txt` + `results_auto.txt` (only shown when both exist)
+6. Auto minus manual (`result_dif.txt`) (only shown when both exist)
 
 ### Mode Details
 
@@ -72,13 +73,18 @@ At startup, a GUI mode picker appears.
 - Opens the final overview editor.
 - Saves edited results back to `results.txt`.
 
-#### 4) Merge manual + auto
+#### 4) Cleanup auto
+
+- Removes auto links that are a substring of another longer auto link.
+- Rewrites `results_auto.txt` in place.
+
+#### 5) Merge manual + auto
 
 - Combines `results.txt` and `results_auto.txt`.
 - Removes duplicates while preserving order.
 - Saves to `results_merged.txt`.
 
-#### 5) Auto minus manual
+#### 6) Auto minus manual
 
 - Subtracts manual links from auto links (`auto - manual`).
 - Saves to `result_dif.txt`.

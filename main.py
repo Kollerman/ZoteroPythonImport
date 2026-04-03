@@ -726,6 +726,31 @@ def export_links_without_doi(links: list[str], output_file: Path) -> list[str]:
 	return filtered
 
 
+def cleanup_auto_links(links: list[str]) -> list[str]:
+	cleaned_links: list[str] = []
+	for index, link in enumerate(links):
+		link_lower = link.lower()
+		is_subset = False
+		for other_index, other_link in enumerate(links):
+			if index == other_index:
+				continue
+			other_lower = other_link.lower()
+			if link_lower and link_lower in other_lower and len(other_lower) > len(link_lower):
+				is_subset = True
+				break
+		if not is_subset:
+			cleaned_links.append(link)
+	return unique_preserve_order(cleaned_links)
+
+
+def cleanup_auto_results(auto_file: Path) -> list[str]:
+	auto_links = read_existing_results(auto_file)
+	cleaned_links = cleanup_auto_links(auto_links)
+	if cleaned_links:
+		write_results(auto_file, cleaned_links)
+	return cleaned_links
+
+
 def merge_result_files(manual_file: Path, auto_file: Path, merged_file: Path) -> list[str]:
 	manual_links = read_existing_results(manual_file)
 	auto_links = read_existing_results(auto_file)
@@ -815,10 +840,22 @@ def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -
 		)
 		edit_btn.pack(fill="x", pady=(0, 8))
 
+	if has_existing_auto_results:
+		cleanup_btn = tk.Button(
+			button_area,
+			text="4. Cleanup auto (results_auto.txt)",
+			bg="#455A64",
+			fg="white",
+			activebackground="#263238",
+			font=("Segoe UI", 10, "bold"),
+			command=lambda: select_mode("cleanup_auto"),
+		)
+		cleanup_btn.pack(fill="x", pady=(0, 8))
+
 	if has_existing_results and has_existing_auto_results:
 		merge_btn = tk.Button(
 			button_area,
-			text="4. Merge results.txt + results_auto.txt",
+			text="5. Merge results.txt + results_auto.txt",
 			bg="#EF6C00",
 			fg="white",
 			activebackground="#E65100",
@@ -830,7 +867,7 @@ def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -
 	if has_existing_results and has_existing_auto_results:
 		diff_btn = tk.Button(
 			button_area,
-			text="5. Auto minus manual (result_dif.txt)",
+			text="6. Auto minus manual (result_dif.txt)",
 			bg="#00897B",
 			fg="white",
 			activebackground="#00695C",
@@ -846,10 +883,12 @@ def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -
 	root.bind("2", lambda _event: select_mode("pdfx"))
 	if has_existing_results:
 		root.bind("3", lambda _event: select_mode("edit"))
+	if has_existing_auto_results:
+		root.bind("4", lambda _event: select_mode("cleanup_auto"))
 	if has_existing_results and has_existing_auto_results:
-		root.bind("4", lambda _event: select_mode("merge"))
+		root.bind("5", lambda _event: select_mode("merge"))
 	if has_existing_results and has_existing_auto_results:
-		root.bind("5", lambda _event: select_mode("diff"))
+		root.bind("6", lambda _event: select_mode("diff"))
 	root.bind("<Escape>", lambda _event: cancel())
 
 	root.mainloop()
@@ -896,6 +935,17 @@ def main() -> None:
 		write_results(results_auto_file, links)
 		print("\nExtracted URLs (pdfx):")
 		print("\n".join(links))
+		print(f"\nSaved to {results_auto_file}")
+		return
+
+	if mode == "cleanup_auto":
+		cleaned_links = cleanup_auto_results(results_auto_file)
+		if not cleaned_links:
+			print("cancel cleanup auto no links found")
+			return
+
+		print("\nCleaned auto URLs:")
+		print("\n".join(cleaned_links))
 		print(f"\nSaved to {results_auto_file}")
 		return
 
