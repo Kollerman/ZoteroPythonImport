@@ -566,17 +566,31 @@ def extract_links_with_pdfx(pdf_path: Path) -> list[str]:
 
 	try:
 		pdf = pdfx.PDFx(str(pdf_path))
+		# Follow the library's documented call sequence.
+		pdf.get_metadata()
 		raw_references = pdf.get_references()
+		raw_references_dict = pdf.get_references_as_dict()
 	except Exception:
 		return []
 
-	if not isinstance(raw_references, list):
-		return []
+	reference_values: list[str] = []
+
+	if isinstance(raw_references, (list, tuple, set)):
+		for item in raw_references:
+			if isinstance(item, str):
+				reference_values.append(item)
+
+	if isinstance(raw_references_dict, dict):
+		for value in raw_references_dict.values():
+			if isinstance(value, str):
+				reference_values.append(value)
+			elif isinstance(value, (list, tuple, set)):
+				for item in value:
+					if isinstance(item, str):
+						reference_values.append(item)
 
 	normalized: list[str] = []
-	for reference in raw_references:
-		if not isinstance(reference, str):
-			continue
+	for reference in reference_values:
 		cleaned = strip_trailing_url_punctuation(reference.strip())
 		if cleaned:
 			normalized.append(cleaned)
@@ -588,7 +602,16 @@ def write_results(results_file: Path, links: list[str]) -> None:
 	results_file.write_text("\n".join(links) + "\n", encoding="utf-8")
 
 
-def pick_mode_gui(has_existing_results: bool) -> str:
+def merge_result_files(manual_file: Path, auto_file: Path, merged_file: Path) -> list[str]:
+	manual_links = read_existing_results(manual_file)
+	auto_links = read_existing_results(auto_file)
+	merged_links = unique_preserve_order(manual_links + auto_links)
+	if merged_links:
+		write_results(merged_file, merged_links)
+	return merged_links
+
+
+def pick_mode_gui(has_existing_results: bool, has_existing_auto_results: bool) -> str:
 	selection = {"mode": "cancel"}
 
 	root = tk.Tk()
@@ -658,6 +681,18 @@ def pick_mode_gui(has_existing_results: bool) -> str:
 		)
 		edit_btn.pack(fill="x", pady=(0, 8))
 
+	if has_existing_results and has_existing_auto_results:
+		merge_btn = tk.Button(
+			button_area,
+			text="4. Merge results.txt + results_auto.txt",
+			bg="#EF6C00",
+			fg="white",
+			activebackground="#E65100",
+			font=("Segoe UI", 10, "bold"),
+			command=lambda: select_mode("merge"),
+		)
+		merge_btn.pack(fill="x", pady=(0, 8))
+
 	cancel_btn = tk.Button(button_area, text="Cancel (Esc)", command=cancel)
 	cancel_btn.pack(fill="x")
 
@@ -665,6 +700,8 @@ def pick_mode_gui(has_existing_results: bool) -> str:
 	root.bind("2", lambda _event: select_mode("pdfx"))
 	if has_existing_results:
 		root.bind("3", lambda _event: select_mode("edit"))
+	if has_existing_results and has_existing_auto_results:
+		root.bind("4", lambda _event: select_mode("merge"))
 	root.bind("<Escape>", lambda _event: cancel())
 
 	root.mainloop()
@@ -674,6 +711,8 @@ def pick_mode_gui(has_existing_results: bool) -> str:
 def main() -> None:
 	import_dir = Path("./import")
 	results_file = Path("results.txt")
+	results_auto_file = Path("results_auto.txt")
+	results_merged_file = Path("results_merged.txt")
 
 	if not import_dir.exists() or not import_dir.is_dir():
 		print("cancel no dir")
@@ -690,7 +729,11 @@ def main() -> None:
 		return
 
 	existing_links = read_existing_results(results_file)
-	mode = pick_mode_gui(has_existing_results=bool(existing_links))
+	existing_auto_links = read_existing_results(results_auto_file)
+	mode = pick_mode_gui(
+		has_existing_results=bool(existing_links),
+		has_existing_auto_results=bool(existing_auto_links),
+	)
 	if mode == "cancel":
 		print("cancel")
 		return
@@ -701,10 +744,21 @@ def main() -> None:
 			print("cancel pdfx no links found")
 			return
 
-		write_results(results_file, links)
+		write_results(results_auto_file, links)
 		print("\nExtracted URLs (pdfx):")
 		print("\n".join(links))
-		print(f"\nSaved to {results_file}")
+		print(f"\nSaved to {results_auto_file}")
+		return
+
+	if mode == "merge":
+		merged_links = merge_result_files(results_file, results_auto_file, results_merged_file)
+		if not merged_links:
+			print("cancel merge no links found")
+			return
+
+		print("\nMerged URLs:")
+		print("\n".join(merged_links))
+		print(f"\nSaved to {results_merged_file}")
 		return
 
 	try:
