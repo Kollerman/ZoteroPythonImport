@@ -54,6 +54,16 @@ def strip_trailing_url_punctuation(url: str) -> str:
 	return url.rstrip(").,;:!?'\"]")
 
 
+def ensure_http_prefix(url: str) -> str:
+	cleaned = strip_trailing_url_punctuation(url.strip())
+	if not cleaned:
+		return ""
+	lower = cleaned.lower()
+	if lower.startswith("http://") or lower.startswith("https://"):
+		return cleaned
+	return f"http://{cleaned}"
+
+
 def scan_url_continuation_from_line(line: str) -> str:
 	match = re.match(r"\s*([A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+)", line)
 	if not match:
@@ -335,6 +345,9 @@ class FinalLinksEditorGui:
 		)
 		finish_btn.pack(side="left")
 
+		add_http_btn = tk.Button(footer, text="Add http:// to missing", command=self.add_http_to_all_links)
+		add_http_btn.pack(side="left", padx=(8, 0))
+
 		status_label = tk.Label(footer, textvariable=self.status_var, anchor="w")
 		status_label.pack(side="left", padx=(12, 0))
 
@@ -462,6 +475,29 @@ class FinalLinksEditorGui:
 			self.status_var.set("Suggestion updated.")
 		else:
 			self.status_var.set("No new suggestion found for this link.")
+
+	def add_http_to_all_links(self) -> None:
+		if not self.records:
+			self.status_var.set("No links to update.")
+			return
+
+		changed_count = 0
+		for record in self.records:
+			original = str(record["final"])
+			updated = ensure_http_prefix(original)
+			if updated and updated != original:
+				record["final"] = updated
+				changed_count += 1
+
+		self.populate_rows()
+		idx = self.selected_index()
+		if idx is None and self.records:
+			self.listbox.selection_set(0)
+			self.show_row(0)
+		elif idx is not None:
+			self.show_row(idx)
+
+		self.status_var.set(f"Added http:// to {changed_count} link(s).")
 
 	def finish(self) -> None:
 		idx = self.selected_index()

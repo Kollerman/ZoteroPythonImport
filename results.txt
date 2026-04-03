@@ -6,7 +6,7 @@ http://dx.doi.org/10.1016/j.actpsy.2004.03.003
 http://dx.doi.org/10.1007/s00221-015-4522-3
 http://dx.doi.org/10.1016/j.neuropsychologia.2010.09.024
 https://well.blogs.nytimes.com/2015/11/02/while-waiting-for-test-results-worrying-may-help-in-the-long-run/
-doi.org/10.3758/BF03194101
+https://doi.org/10.3758/BF03194101
 http://dx.doi.org/10.1016/j.ijpsycho
 http://dx.doi.org/10.1016/S0001-6918%2800%2900029-9
 http://dx.doi.org/10.1167/5.3.6
@@ -39,9 +39,9 @@ http://dx.doi.org/10.1037/h0056940
 http://dx.doi.org/10.2501/JAR-2016-045
 http://dx.doi.org/10.1111/j.1467-9280.2009.02354.x
 http://dx.doi.org/10.1037/0096-3445.109.4.444
-doi.org/10.1027/1618-3169/a000054
+https://doi.org/10.1027/1618-3169/a000054
 http://dx.doi.org/10.1111/j.1469-8986.2010.01135.x
-http://dx.doi.org/10.1080/
+http://dx.doi.org/10.1080/02650487.2014.997423
 http://dx.doi.org/10.1523/JNEUROSCI.1233-08.2008
 http://dx.doi.org/10.1037/1528-3542.7.4.697
 http://dx.doi.org/10.1371/journal.pbio.1000166
@@ -62,7 +62,7 @@ http://dx.doi.org/10.1080/14640749208401284
 http://dx.doi.org/10.1098/rstb.2009.0013
 http://dx.doi.org/10.1080/02699931.2014.978841
 http://dx.doi.org/10.1126/science.1144161
-https://www.nytimes
+https://www.nytimes.com/2016/03/27/your-money/why-we-think-were-better-investors-than-we-are.html
 http://dx.doi.org/10.1016/j.brainres.2005.11.094
 http://dx.doi.org/10.1016/j.cogpsych.2007.11.001
 http://dx.doi.org/10.1177/0956797612469411
