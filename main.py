@@ -348,6 +348,9 @@ class FinalLinksEditorGui:
 		add_http_btn = tk.Button(footer, text="Add http:// to missing", command=self.add_http_to_all_links)
 		add_http_btn.pack(side="left", padx=(8, 0))
 
+		doi_filter_btn = tk.Button(footer, text="DOI filter export", command=self.export_no_doi_links)
+		doi_filter_btn.pack(side="left", padx=(8, 0))
+
 		status_label = tk.Label(footer, textvariable=self.status_var, anchor="w")
 		status_label.pack(side="left", padx=(12, 0))
 
@@ -498,6 +501,20 @@ class FinalLinksEditorGui:
 			self.show_row(idx)
 
 		self.status_var.set(f"Added http:// to {changed_count} link(s).")
+
+	def export_no_doi_links(self) -> None:
+		if not self.records:
+			self.status_var.set("No links to export.")
+			return
+
+		current_links = [str(record["final"]).strip() for record in self.records if str(record["final"]).strip()]
+		output_file = Path("results_noDoi.txt")
+		filtered_links = export_links_without_doi(current_links, output_file)
+		if not filtered_links:
+			self.status_var.set("No non-DOI links found.")
+			return
+
+		self.status_var.set(f"Exported {len(filtered_links)} non-DOI link(s) to {output_file}.")
 
 	def finish(self) -> None:
 		idx = self.selected_index()
@@ -699,6 +716,14 @@ def extract_links_with_pdfx(pdf_path: Path) -> list[str]:
 
 def write_results(results_file: Path, links: list[str]) -> None:
 	results_file.write_text("\n".join(links) + "\n", encoding="utf-8")
+
+
+def export_links_without_doi(links: list[str], output_file: Path) -> list[str]:
+	filtered = [link for link in links if "doi" not in link.lower()]
+	filtered = unique_preserve_order(filtered)
+	if filtered:
+		write_results(output_file, filtered)
+	return filtered
 
 
 def merge_result_files(manual_file: Path, auto_file: Path, merged_file: Path) -> list[str]:
